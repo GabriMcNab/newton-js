@@ -4,10 +4,11 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && tsc-alias",
     "clean": "rm -rf dist"
   },
   "devDependencies": {
+    "tsc-alias": "^1.8.16",
     "typescript": "^5.3.3"
   }
 }
