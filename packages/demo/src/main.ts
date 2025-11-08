@@ -1,35 +1,75 @@
-import { Application, Assets, Sprite } from "pixi.js";
+import { Application, Assets, Container, Sprite } from 'pixi.js';
+import { Engine, RigidBody, Vector2 } from '@newton-js/core';
+import { nanoid } from 'nanoid';
+import { Entity } from './types';
 
-(async () => {
-  // Create a new application
-  const app = new Application();
+// Load assets
 
-  // Initialize the application
-  await app.init({ background: "#1099bb", resizeTo: window });
+const bunnyTexture = await Assets.load('/assets/bunny.png');
 
-  // Append the application canvas to the document body
-  document.getElementById("pixi-container")!.appendChild(app.canvas);
+// State
 
-  // Load the bunny texture
-  const texture = await Assets.load("/assets/bunny.png");
+let entities: Record<string, Entity> = {};
 
-  // Create a bunny Sprite
-  const bunny = new Sprite(texture);
+// Entities
 
-  // Center the sprite's anchor point
-  bunny.anchor.set(0.5);
+const bunny1 = createBunny(new Vector2(-100, 0));
+const bunny2 = createBunny(new Vector2(100, 0));
 
-  // Move the sprite to the center of the screen
-  bunny.position.set(app.screen.width / 2, app.screen.height / 2);
+entities = {
+  [bunny1.id]: bunny1,
+  [bunny2.id]: bunny2,
+};
 
-  // Add the bunny to the stage
-  app.stage.addChild(bunny);
+async function main() {
+  const app = await setupScene(entities);
+  document.body.appendChild(app.canvas);
 
-  // Listen for animate update
-  app.ticker.add((time) => {
-    // Just for fun, let's rotate mr rabbit a little.
-    // * Delta is 1 if running at 100% performance *
-    // * Creates frame-independent transformation *
-    bunny.rotation += 0.1 * time.deltaTime;
+  const physicsEngine = new Engine();
+  Object.values(entities).forEach((entity) => {
+    physicsEngine.addBody(entity.body);
   });
-})();
+
+  app.ticker.add((ticker) => {
+    physicsEngine.update(ticker.deltaTime);
+    Object.values(entities).forEach((entity) => {
+      entity.sprite.position.set(entity.body.position.x, entity.body.position.y);
+    });
+  });
+}
+
+// Helpers
+
+async function setupScene(entities: Record<Entity['id'], Entity>) {
+  const app = new Application();
+  await app.init({ background: '#1099bb', resizeTo: window });
+
+  const container = new Container();
+  container.position.set(app.screen.width / 2, app.screen.height / 2);
+
+  // Setup scene
+  for (const entity of Object.values(entities)) {
+    container.addChild(entity.sprite);
+  }
+
+  app.stage.addChild(container);
+
+  return app;
+}
+
+function createBunny(position: Vector2): Entity {
+  const bunny = new Sprite(bunnyTexture);
+  bunny.position.set(position.x, position.y);
+  return {
+    id: nanoid(),
+    sprite: bunny,
+    body: new RigidBody({
+      initialPosition: position,
+      initialVelocity: new Vector2(0, Math.random() * 10),
+    }),
+  };
+}
+
+// Run
+
+main();
